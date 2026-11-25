@@ -1,3 +1,4 @@
+import { asMetadata, SEOJsonLd } from "@/lib/seo";
 import { addToCart } from "@/app/actions";
 import { notFound } from "next/navigation";
 import { Gallery } from "@/components/interactive";
@@ -10,11 +11,7 @@ type Props = { params: Promise<{ slug: string }>; searchParams: Promise<Query> }
 const tabs = [["details", "مشخصات"], ["reviews", "دیدگاه‌ها"], ["care", "نگهداری"], ["guarantee", "ضمانت"]];
 export async function generateMetadata({ params }: Props) {
   const item = await product((await params).slug);
-  if (!item) return { title: "محصول" };
-  return { title: item.seo?.meta_title || item.title, description: item.seo?.meta_description || item.short_description,
-    robots: item.seo ? { index: item.seo.robots_index, follow: item.seo.robots_follow } : undefined,
-    alternates: item.seo ? { canonical: item.seo.canonical_url } : undefined,
-    openGraph: item.seo ? { title: item.seo.og_title, description: item.seo.og_description, images: item.seo.og_image ? [item.seo.og_image] : [] } : undefined };
+  return asMetadata(item?.seo);
 }
 export default async function ProductPage({ params, searchParams }: Props) {
   const { slug } = await params;
@@ -31,7 +28,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
     favoriteIds([item.id]),
   ]);
   const gallery = item.main_image && !item.gallery.some(i => i.image === item.main_image)
-    ? [{ id: 0, image: item.main_image, position: 0, alt_text: item.title }, ...item.gallery] : item.gallery;
+    ? [{ id: 0, image: item.main_image, position: 0, alt_text: item.main_image_alt_text || item.title }, ...item.gallery] : item.gallery;
   return <div className="container product-page">
     <Crumbs trail={[["محصولات", "/products"], ...(group ? [[group.name, "/categories/" + encodeURIComponent(group.slug)] as [string, string]] : []), [item.title]]}/>
     <section className="product-detail">
@@ -56,6 +53,6 @@ export default async function ProductPage({ params, searchParams }: Props) {
     </section>
     <section className="related"><Heading title="محصولات مکمل و مرتبط"/><ProductGrid items={related}/></section>
     {similar.length > 0 && <section className="related"><Heading title="محصولات مشابه"/><ProductGrid items={similar}/></section>}
-    {item.seo?.structured_data && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(item.seo.structured_data).replace(/</g, "\\u003c") }}/>}
+    <SEOJsonLd seo={item.seo}/>
   </div>;
 }

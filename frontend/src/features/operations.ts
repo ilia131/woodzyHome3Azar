@@ -5,6 +5,9 @@ type Operation = { method: "POST" | "PATCH" | "DELETE"; path: (id: string) => st
 const address = ["label", "recipient_name", "recipient_phone", "province", "city", "address_line", "postal_code", "is_default"];
 const product = ["title", "slug", "short_description", "description", "price", "discount_price", "sku", "category", "is_active", "is_featured", "main_image"];
 const category = ["name", "slug", "description", "parent", "is_active", "image"];
+const seoRobots = ["robots_index", "robots_follow"];
+const seo = ["meta_title", "meta_description", "meta_keywords", "focus_keyword", "secondary_keywords",
+  "canonical_url", "og_title", "og_description", "og_image", ...seoRobots];
 const afterOrder = (row: Row) => "/checkout/payment?order=" + Number(row.id);
 const afterPayment = (row: Row) => "/checkout/result?id=" + Number(row.id);
 export const operations = {
@@ -25,8 +28,12 @@ export const operations = {
   removeReview: { method: "DELETE", path: id => "reviews/" + id + "/", fields: [] },
   addProduct: { method: "POST", path: () => "admin/products/", fields: [...product, "stock"], integers: ["category", "stock"], booleans: ["is_active", "is_featured"], multipart: true, result: row => "/admin/editor?id=" + Number(row.id) },
   editProduct: { method: "PATCH", path: id => "admin/products/" + id + "/", fields: product.filter(f => f !== "slug"), integers: ["category"], booleans: ["is_active", "is_featured"], multipart: true },
-  addSeo: { method: "POST", path: () => "admin/seo/", fields: ["product", ...["meta_title", "meta_description", "meta_keywords", "canonical_url", "og_title", "og_description", "og_image", "robots_index", "robots_follow"]], booleans: ["robots_index", "robots_follow"], multipart: true },
-  editSeo: { method: "PATCH", path: id => "admin/seo/" + id + "/", fields: ["meta_title", "meta_description", "meta_keywords", "canonical_url", "og_title", "og_description", "og_image", "robots_index", "robots_follow"], booleans: ["robots_index", "robots_follow"], multipart: true },
+  addSeo: { method: "POST", path: () => "admin/seo/", fields: ["product", ...seo, "main_image_alt_text"], booleans: seoRobots, multipart: true },
+  editSeo: { method: "PATCH", path: id => "admin/seo/" + id + "/", fields: [...seo, "main_image_alt_text"], booleans: seoRobots, multipart: true },
+  regenerateSeo: { method: "POST", path: id => "admin/seo/" + id + "/regenerate/", fields: [] },
+  addCategorySeo: { method: "POST", path: () => "admin/category-seo/", fields: ["category", ...seo], booleans: seoRobots, multipart: true },
+  editCategorySeo: { method: "PATCH", path: id => "admin/category-seo/" + id + "/", fields: seo, booleans: seoRobots, multipart: true },
+  regenerateCategorySeo: { method: "POST", path: id => "admin/category-seo/" + id + "/regenerate/", fields: [] },
   addImage: { method: "POST", path: () => "admin/product-images/", fields: ["product", "image", "alt_text", "position"], integers: ["product", "position"], multipart: true },
   editImage: { method: "PATCH", path: id => "admin/product-images/" + id + "/", fields: ["alt_text", "position"], integers: ["position"] },
   removeImage: { method: "DELETE", path: id => "admin/product-images/" + id + "/", fields: [] },

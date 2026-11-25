@@ -94,6 +94,7 @@ SPECTACULAR_SETTINGS = {'TITLE': 'HomeAksoria API', 'VERSION': '1.0.0', 'COMPONE
 CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:3000').split(',')
 CSRF_TRUSTED_ORIGINS = [value for value in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if value]
 SITE_URL = os.getenv('SITE_URL', 'http://localhost:3000').rstrip('/')
+SEO_MEDIA_URL = os.getenv("SEO_MEDIA_URL", "").rstrip("/")
 CURRENCY = os.getenv('STORE_CURRENCY', 'IRR')
 TIME_ZONE = 'UTC'
 USE_TZ = True

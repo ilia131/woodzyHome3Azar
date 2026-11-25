@@ -1,15 +1,17 @@
+import { pageMetadata } from "@/lib/seo";
 import { ContactForm } from "@/components/store-forms";
 import { first } from "@/lib/catalog";
 import type { Query } from "@/lib/types";
 import { Armchair, Hammer, Leaf, MapPin, ShieldCheck } from "lucide-react";
 import { Crumbs, Heading, LinkButton, Picture } from "@/components/storefront";
-export const metadata = { title: "درباره ما و تماس" };
 const values = [[Leaf, "متریال طبیعی"], [Hammer, "توجه به ساخت"], [Armchair, "راحتی و کاربرد"], [ShieldCheck, "همراهی در انتخاب"]] as const;
 const questions = [
   ["چطور مشخصات یک محصول را بررسی کنم؟", "در صفحهٔ محصول، بخش مشخصات را باز کنید. گالری، قیمت و وضعیت موجودی همان‌جا دیده می‌شوند."],
   ["کالاهای موجود را چگونه پیدا کنم؟", "در صفحهٔ محصولات، گزینهٔ «فقط کالاهای موجود» را در بخش فیلترها انتخاب کنید."],
   ["چطور محصولات مورد علاقه‌ام را ذخیره کنم؟", "نماد قلب را روی کارت یا صفحهٔ محصول انتخاب کنید. فهرست ذخیره‌شده از سربرگ قابل دسترسی است."],
 ];
+export const generateMetadata = pageMetadata("about");
+
 export default async function AboutPage({ searchParams }: { searchParams: Promise<Query> }) {
   const result = first((await searchParams).store);
   return <div className="container about-page">

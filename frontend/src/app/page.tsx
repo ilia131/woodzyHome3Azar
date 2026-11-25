@@ -1,16 +1,20 @@
+import { pageMetadata, SEOJsonLd } from "@/lib/seo";
 import Link from "next/link";
 import { NewsletterForms } from "@/components/store-forms";
 import type { Query } from "@/lib/types";
 import Image from "next/image";
 import { ArrowLeft, ArrowUpLeft, Armchair, Leaf, PackageCheck, ShieldCheck, Sparkles } from "lucide-react";
 import { Advantages, CategoryGrid, Heading, LinkButton, Picture, ProductGrid } from "@/components/storefront";
-import { collection, first, suggestedCategories } from "@/lib/catalog";
+import { collection, first, siteSeo, suggestedCategories } from "@/lib/catalog";
 
 export const dynamic = "force-dynamic";
+export const generateMetadata = pageMetadata("home");
+
 export default async function Home({ searchParams }: { searchParams: Promise<Query> }) {
   const result = first((await searchParams).store);
-  const [groups, popular, newest, viewed, discounts, bestSellers, mostFavorited] = await Promise.all([suggestedCategories(), collection("products/popular/"), collection("products/?ordering=-newest"), collection("products/most-viewed/"), collection("products/best-discounts/"), collection("products/best-selling/"), collection("products/most-favorited/")]);
+  const [groups, popular, newest, viewed, discounts, bestSellers, mostFavorited, seo] = await Promise.all([suggestedCategories(), collection("products/popular/"), collection("products/?ordering=-newest"), collection("products/most-viewed/"), collection("products/best-discounts/"), collection("products/best-selling/"), collection("products/most-favorited/"), siteSeo("home")]);
   return <>
+    <SEOJsonLd seo={seo}/>
     <section className="hero" aria-labelledby="home-title">
       <div className="container hero-inner">
         <div className="hero-copy">

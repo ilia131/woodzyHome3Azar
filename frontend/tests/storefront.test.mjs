@@ -264,3 +264,33 @@ test("Django rotates the browser session and logout revokes its refresh token", 
     await page.getByRole("link", { name: "وارد شوید" }).waitFor();
   } finally { await page.close(); }
 });
+
+test("SEO metadata is server-rendered from Django with public discovery files", { skip: !live }, async () => {
+  const page = await browser.newPage();
+  try {
+    const response = await page.request.get(base + product);
+    assert.equal(response.status(), 200);
+    const html = await response.text();
+    const head = html.split("</head>")[0];
+    assert.match(head, /<title>[^<]+<\/title>/);
+    assert.match(head, /<meta name="description" content="[^"]+"/);
+    assert.match(head, /<link rel="canonical" href="[^"]+\/products\/qa-sofa"/);
+    assert.match(head, /name="twitter:card"/);
+    await page.goto(base + product);
+    const records = (await page.locator('script[type="application/ld+json"]').allTextContents()).map(JSON.parse);
+    assert.ok(records.some(value => value["@type"] === "Product" && value.offers.price && value.offers.priceCurrency));
+    assert.ok(records.some(value => value["@type"] === "BreadcrumbList" && value.itemListElement.length >= 3));
+
+    await page.goto(base + "/categories/living?in_stock=true");
+    assert.match(await page.locator('meta[name="robots"]').getAttribute("content"), /noindex/);
+    const sitemap = await page.request.get(base + "/sitemap.xml");
+    assert.equal(sitemap.status(), 200);
+    const xml = await sitemap.text();
+    assert.match(xml, /<loc>[^<]*\/products\/qa-sofa<\/loc>/);
+    assert.match(xml, /<loc>[^<]*\/categories\/living<\/loc>/);
+    assert.doesNotMatch(xml, /\/checkout/);
+    const robots = await page.request.get(base + "/robots.txt");
+    assert.equal(robots.status(), 200);
+    assert.match(await robots.text(), /Disallow: \/checkout/);
+  } finally { await page.close(); }
+});

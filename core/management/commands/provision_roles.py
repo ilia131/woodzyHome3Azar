@@ -11,6 +11,7 @@ CATALOG = {
     'products.productchange': ('view',),
     'categories.category': ('add', 'view', 'change', 'delete'),
     'seo.productseo': ('add', 'view', 'change', 'delete'),
+    'seo.categoryseo': ('add', 'view', 'change'),
 }
 SUPPORT = {
     'accounts.user': ('view',),

@@ -1,7 +1,7 @@
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { showcaseCategories, showcaseProducts } from "./showcase";
-import type { Category, Listing, Product, Query, Review } from "./types";
+import type { Category, Listing, Product, Query, Review, SEOMetadata } from "./types";
 
 const apiBase = process.env.DJANGO_API_URL?.replace(/\/+$/, "");
 export const demo = !apiBase && process.env.NODE_ENV !== "production" && process.env.WOODZY_SHOWCASE === "1";
@@ -92,12 +92,15 @@ export const categories = cache(async (): Promise<Category[]> => {
     page += 1;
   }
 });
-export const category = cache(async (slug: string) => {
+export const category = cache(async (slug: string, filtered = false): Promise<Category | undefined> => {
   const target = slug === "living" ? process.env.LIVING_CATEGORY_SLUG || slug : slug;
   if (demo) return showcaseCategories.find(c => c.slug === target);
-  const found = await data<Category>("categories/" + encodeURIComponent(target) + "/", true);
+  const found = await data<Category>("categories/" + encodeURIComponent(target) + "/" + (filtered ? "?filtered=1" : ""), true);
   if (found) return { ...found, image: media(found.image) };
-  if (slug === "living") return (await categories()).find(c => c.name === "نشیمن");
+  if (slug === "living") {
+    const alias = (await categories()).find(c => c.name === "نشیمن" && c.slug !== target);
+    if (alias) return category(alias.slug, filtered);
+  }
 
 });
 export async function categoryChildren(slug: string) {
@@ -196,4 +199,26 @@ export async function favoriteProducts(page = 1): Promise<{ items: Listing<Produ
 export async function reviews(id: number) {
   if (demo) return [];
   return (await data<Listing<Review>>("products/" + id + "/reviews/"))?.results ?? [];
+}
+
+
+export const siteSeo = cache(async (page: string, filtered = false) => {
+  if (demo || !apiBase) return null;
+  return data<SEOMetadata>("seo/site/?" + new URLSearchParams({ page, filtered: filtered ? "1" : "0" }), true);
+});
+
+export async function seoDocument(path: "robots.txt" | "sitemap.xml", search = "") {
+  if (!apiBase) return new Response("SEO document unavailable", { status: 503 });
+  try {
+    const url = new URL(apiBase);
+    url.pathname = "/" + path;
+    url.search = search;
+    const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(6000) });
+    return new Response(response.body, {
+      status: response.status,
+      headers: { "Content-Type": response.headers.get("Content-Type") ?? "text/plain" },
+    });
+  } catch {
+    return new Response("SEO document unavailable", { status: 503 });
+  }
 }

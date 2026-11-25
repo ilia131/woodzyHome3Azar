@@ -1,11 +1,17 @@
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from seo.serializers import SEOMetadataSerializer
 from seo.services import metadata
 from .models import Product, ProductImage
 
 
 class ImageSerializer(serializers.ModelSerializer):
+    alt_text = serializers.SerializerMethodField()
+
+    def get_alt_text(self, item) -> str:
+        return item.alt_text or item.product.title
+
     class Meta:
         model = ProductImage
         fields = ('id', 'image', 'alt_text', 'position')
@@ -30,26 +36,15 @@ class ProductSerializer(serializers.ModelSerializer):
                   'created_at', 'updated_at')
 
 
-class SEOMetadataSerializer(serializers.Serializer):
-    meta_title = serializers.CharField()
-    meta_description = serializers.CharField()
-    meta_keywords = serializers.CharField(allow_blank=True)
-    canonical_url = serializers.URLField()
-    og_title = serializers.CharField()
-    og_description = serializers.CharField()
-    og_image = serializers.URLField(allow_null=True)
-    open_graph = serializers.DictField()
-    twitter = serializers.DictField()
-    structured_data = serializers.DictField()
-    robots_index = serializers.BooleanField()
-    robots_follow = serializers.BooleanField()
-
-
 class ProductDetailSerializer(ProductSerializer):
     seo = serializers.SerializerMethodField()
+    main_image_alt_text = serializers.SerializerMethodField()
+
+    def get_main_image_alt_text(self, product) -> str:
+        return getattr(getattr(product, 'seo', None), 'main_image_alt_text', '') or product.title
 
     class Meta(ProductSerializer.Meta):
-        fields = (*ProductSerializer.Meta.fields, 'description', 'seo')
+        fields = (*ProductSerializer.Meta.fields, 'description', 'seo', 'main_image_alt_text')
 
     @extend_schema_field(SEOMetadataSerializer)
     def get_seo(self, product):

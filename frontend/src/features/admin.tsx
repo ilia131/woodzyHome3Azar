@@ -56,7 +56,7 @@ async function ProductEditor({ query }: { query: Query }) {
     ]}/></Panel>}
     {id && <Panel title="تاریخچه محصول"><ApiTable endpoint={"admin/product-history/?product=" + id} columns={[["created_at","تاریخ"],["price","قیمت"],["discount_price","قیمت تخفیف"],["stock","موجودی"]]}/></Panel>}
     {id && <ProductMetrics id={id}/>}
-    {id && row && <ProductSeo productId={id} sku={String(row.sku)}/>}</>;
+    {id && row && <SEOEditor entityId={id}/>}</>;
 }
 async function ProductMetrics({ id }: { id: string }) {
   try {
@@ -66,20 +66,37 @@ async function ProductMetrics({ id }: { id: string }) {
     ]}/></Panel>;
   } catch (error) { return <Panel title="آمار بازدید محصول"><ServiceIssue error={error}/></Panel>; }
 }
-async function ProductSeo({ productId, sku }: { productId: string; sku: string }) {
+async function SEOEditor({ entityId, isCategory = false }: { entityId: string; isCategory?: boolean }) {
+  const key = isCategory ? "category" : "product";
+  const route = isCategory ? "/admin/categories?id=" + entityId : "/admin/editor?id=" + entityId;
+  const title = isCategory ? "سئوی دسته‌بندی" : "سئوی محصول";
   try {
-    const records = await list("admin/seo/?" + new URLSearchParams({ search: sku, page_size: "100" }));
-    const row = records.rows.find(candidate => String(candidate.product) === productId);
+    const endpoint = isCategory ? "admin/category-seo/" : "admin/seo/";
+    const records = await list(endpoint + "?" + new URLSearchParams({ [key]: entityId }));
+    const row = records.rows.find(candidate => String(candidate[key]) === entityId);
+    const generated = row?.generated as Record<string, string> | undefined;
     const fields: Field[] = [
-      ...(!row ? [{ name: "product", label: "", type: "hidden" as const, value: productId }] : []),
-      ...[["meta_title","عنوان متا"],["meta_description","توضیح متا"],["meta_keywords","کلیدواژه‌ها"],["canonical_url","نشانی Canonical"],
-        ["og_title","عنوان اشتراک‌گذاری"],["og_description","توضیح اشتراک‌گذاری"]].map(([name,label]) => ({name,label,value:String(row?.[name] ?? "")})),
+      ...(!row ? [{ name: key, label: "", type: "hidden" as const, value: entityId }] : []),
+      ...[["meta_title","عنوان متا"],["meta_description","توضیح متا"],["meta_keywords","کلیدواژه‌ها"],
+        ["focus_keyword","کلیدواژهٔ اصلی"],["secondary_keywords","کلیدواژه‌های فرعی"],["canonical_url","نشانی Canonical"],
+        ["og_title","عنوان اشتراک‌گذاری"],["og_description","توضیح اشتراک‌گذاری"],
+        ...(!isCategory ? [["main_image_alt_text","متن جایگزین تصویر اصلی"]] : []),
+      ].map(([name,label]) => ({name,label,value:String(row?.[name] ?? "")})),
       {name:"og_image",label:"تصویر اشتراک‌گذاری",type:"file"},
       {name:"robots_index",label:"نمایه‌سازی",type:"checkbox",value:row?.robots_index !== false},
       {name:"robots_follow",label:"دنبال کردن پیوندها",type:"checkbox",value:row?.robots_follow !== false},
     ];
-    return <Panel title="سئوی محصول"><MutationForm operation={row ? "editSeo" : "addSeo"} id={row ? identify(row) : ""} returnTo={"/admin/editor?id=" + productId} fields={fields} label="ذخیره سئو"/></Panel>;
-  } catch (error) { return <Panel title="سئوی محصول"><ServiceIssue error={error}/></Panel>; }
+    const operation = isCategory ? (row ? "editCategorySeo" : "addCategorySeo") : (row ? "editSeo" : "addSeo");
+    return <Panel title={title}>
+      <p>{row?.manually_edited ? "ویرایش دستی" : "پیش‌فرض خودکار"} · پیش‌نمایش نتیجهٔ جست‌وجو</p>
+      <div className="empty"><small dir="ltr">{String(row?.canonical_url || generated?.canonical_url || "")}</small>
+        <h3>{String(row?.meta_title || generated?.meta_title || "")}</h3><p>{String(row?.meta_description || generated?.meta_description || "")}</p>
+      </div>
+      <p>فیلد متنی خالی از پیش‌فرض بک‌اند استفاده می‌کند.</p>
+      <MutationForm operation={operation} id={row ? identify(row) : ""} returnTo={route} fields={fields} label="ذخیره سئو"/>
+      {row && <MutationForm operation={isCategory ? "regenerateCategorySeo" : "regenerateSeo"} id={identify(row)} returnTo={route} label="بازسازی پیش‌فرض‌ها"/>}
+    </Panel>;
+  } catch (error) { return <Panel title={title}><ServiceIssue error={error}/></Panel>; }
 }
 const categoryFields = (groups: Row[], r: Row = {}): Field[] => [
   {name:"name",label:"نام",value:String(r.name ?? ""),required:true}, {name:"slug",label:"نشانی",value:String(r.slug ?? ""),required:true},
@@ -90,10 +107,10 @@ const categoryFields = (groups: Row[], r: Row = {}): Field[] => [
 async function Categories({ query }: { query: Query }) {
   const args = listed("/admin/categories",query);
   const groups = await list("admin/categories/" + args.endpoint);
-  return <Panel title="دسته‌های فروشگاه"><SearchAdmin path="/admin/categories" value={args.search} label="نام دسته"/>
-    <ApiTable endpoint={"admin/categories/" + args.endpoint} route={args.route} page={args.page} columns={[["name","نام"],["parent","والد"],["is_active","فعال"]]} actions={row => <details><summary>ویرایش</summary><MutationForm operation="editCategory" id={identify(row)} returnTo="/admin/categories" label="ذخیره دسته" fields={categoryFields(groups.rows,row)}/></details>}/>
+  return <><Panel title="دسته‌های فروشگاه"><SearchAdmin path="/admin/categories" value={args.search} label="نام دسته"/>
+    <ApiTable endpoint={"admin/categories/" + args.endpoint} route={args.route} page={args.page} columns={[["name","نام"],["parent","والد"],["is_active","فعال"]]} actions={row => <details><summary>ویرایش</summary><MutationForm operation="editCategory" id={identify(row)} returnTo="/admin/categories" label="ذخیره دسته" fields={categoryFields(groups.rows,row)}/><Link href={"/admin/categories?id=" + row.id}>سئوی دسته‌بندی</Link></details>}/>
     <h3>دسته جدید</h3><MutationForm operation="addCategory" returnTo="/admin/categories" label="ثبت دسته" fields={categoryFields(groups.rows)}/>
-  </Panel>;
+  </Panel>{rowId(query) && <SEOEditor entityId={rowId(query)} isCategory/>}</>;
 }
 async function Inventory({ query }: { query: Query }) {
   const id = rowId(query);
@@ -155,12 +172,49 @@ async function RankingSettings() {
   } catch (error) { return <ServiceIssue error={error}/>; }
 }
 
+const seoWarnings: Record<string, string> = {
+  missing_title: "عنوان خالی", missing_description: "توضیح خالی", missing_canonical: "Canonical خالی",
+  invalid_canonical: "Canonical نامعتبر", duplicate_title: "عنوان تکراری", duplicate_description: "توضیح تکراری",
+  long_title: "عنوان طولانی", long_description: "توضیح طولانی", missing_image: "تصویر ندارد",
+  missing_alt: "Alt خالی", invalid_slug: "Slug نامعتبر", noindex: "Noindex", not_generated: "پیش‌فرض ذخیره نشده",
+  complete: "کامل",
+};
+
+async function SEOAudit({ query }: { query: Query }) {
+  const status = first(query.seo_status);
+  const search = first(query.seo_search);
+  const page = Math.max(1, Number(first(query.seo_page)) || 1);
+  const params = new URLSearchParams({ status, search, page: String(page), page_size: "20" });
+  const path = (position: number) => "/admin/settings?" + new URLSearchParams({ seo_status: status, seo_search: search, seo_page: String(position) });
+  try {
+    const data: { summary: Record<string, number>; count: number; results: { id: number; title: string; warnings: string[] }[] } =
+      await authorized("admin/seo-audit/?" + params);
+    const labels = { total: "کل محصولات", complete: "کامل", completion_percentage: "درصد تکمیل" };
+    return <Panel title="ممیزی سئوی محصولات">
+      <form action="/admin/settings" className="workspace-form">
+        <label>محصول<input name="seo_search" defaultValue={search}/></label>
+        <label>وضعیت<select name="seo_status" defaultValue={status}><option value="">همه</option>
+          {Object.entries(seoWarnings).map(([key,label]) => <option key={key} value={key}>{label}</option>)}</select></label>
+        <button className="button">اعمال فیلتر</button>
+      </form>
+      <dl>{Object.entries(data.summary).map(([key,count]) => <div key={key}>
+        <dt>{labels[key as keyof typeof labels] || seoWarnings[key] || key}</dt><dd>{count}</dd></div>)}</dl>
+      <DataTable rows={data.results.map(row => ({ ...row, warnings: row.warnings.map(code => seoWarnings[code] ?? code).join("، ") || "کامل" }))}
+        columns={[["title","محصول"],["warnings","هشدارها"]]} actions={row => <Link href={"/admin/editor?id=" + row.id}>ویرایش سئو</Link>}/>
+      <nav className="pagination" aria-label="صفحه‌بندی ممیزی">
+        {page > 1 && <Link href={path(page - 1)}>صفحه قبل</Link>}
+        {page * 20 < data.count && <Link href={path(page + 1)}>صفحه بعد</Link>}
+      </nav>
+    </Panel>;
+  } catch (error) { return <Panel title="ممیزی سئوی محصولات"><ServiceIssue error={error}/></Panel>; }
+}
+
 async function Settings({ query }: { query: Query }) {
   const policyFields = [["favorite_weight","وزن علاقه‌مندی"],["view_weight","وزن بازدید"],["category_weight","وزن دسته"],["title_weight","وزن عنوان"],["description_weight","وزن توضیح"],["history_days","روزهای تاریخچه"],["min_viewed_products","حداقل محصول دیده‌شده"],["seed_limit","حد پیشنهاد اولیه"]];
   let policy: Row | undefined;
   let policyError: unknown;
   try { policy = await authorized("admin/recommendation-settings/"); } catch (e) { policyError = e; }
-  return <><Panel title="مدیریت دیدگاه‌ها"><ApiTable endpoint="admin/reviews/" route="/admin/settings" page={readPage(query)} columns={[["title","عنوان"],["rating","امتیاز"],["is_approved","تأیید شده"]]} actions={r => <details><summary>بررسی دیدگاه</summary>
+  return <><SEOAudit query={query}/><Panel title="مدیریت دیدگاه‌ها"><ApiTable endpoint="admin/reviews/" route="/admin/settings" page={readPage(query)} columns={[["title","عنوان"],["rating","امتیاز"],["is_approved","تأیید شده"]]} actions={r => <details><summary>بررسی دیدگاه</summary>
     <p>{String(r.comment ?? "")}</p><MutationForm operation="review" id={identify(r)} returnTo="/admin/settings" label={r.is_approved ? "رد دیدگاه" : "تأیید دیدگاه"} fields={[{name:"is_approved",label:"",type:"hidden",value:!r.is_approved}]}/>
     <MutationForm operation="reply" id={identify(r)} returnTo="/admin/settings" label="ارسال پاسخ" fields={[{name:"comment",label:"پاسخ",type:"textarea",required:true}]}/></details>}/></Panel>
     <Panel title="گزارش محصولات پربازدید"><ApiTable endpoint="admin/reports/most-viewed-products/" columns={[["title","محصول"],["view_count","بازدید"]]}/></Panel>

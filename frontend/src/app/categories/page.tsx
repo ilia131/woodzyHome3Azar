@@ -1,8 +1,10 @@
+import { pageMetadata } from "@/lib/seo";
 import { CategoryDirectory } from "@/components/interactive";
 import { Advantages, Crumbs, LinkButton, Picture } from "@/components/storefront";
 import { categories } from "@/lib/catalog";
 export const dynamic = "force-dynamic";
-export const metadata = { title: "دسته‌بندی محصولات" };
+export const generateMetadata = pageMetadata("categories");
+
 export default async function CategoriesPage() {
   return <div className="container categories-page">
     <Crumbs trail={[["دسته‌بندی‌ها"]]}/>

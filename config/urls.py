@@ -18,8 +18,8 @@ from products.admin_api import AdminImages, AdminProductHistory, AdminProducts
 from products.api import BestDiscounts, BestSellers, MostFavorited, MostViewed, ProductDetail, ProductList
 from recommendations.api import FromFavorites, Popular, Recommended, Related, Similar, SuggestedCategories
 from reviews.api import AdminReply, AdminReview, AdminReviews, OwnerReview, ProductReviews
-from seo.admin_api import AdminSEO
-from seo.views import robots, sitemap
+from seo.admin_api import AdminCategorySEO, AdminSEO, AdminSEOAudit
+from seo.views import SiteSEO, robots, sitemap
 
 admin_router = SimpleRouter()
 admin_router.register('products', AdminProducts)
@@ -27,12 +27,15 @@ admin_router.register('categories', AdminCategories)
 admin_router.register('product-images', AdminImages)
 admin_router.register('product-history', AdminProductHistory)
 admin_router.register('seo', AdminSEO)
+admin_router.register("category-seo", AdminCategorySEO)
 admin_router.register('users', AdminCustomers)
 admin_router.register('orders', AdminOrders)
 admin_router.register('audit-logs', AdminAuditLog)
 admin_router.register('ranking-weights', AdminRankingWeights)
 
 api = [
+    path("seo/site/", SiteSEO.as_view(), name="seo-site"),
+    path("admin/seo-audit/", AdminSEOAudit.as_view(), name="seo-audit"),
     path('store/contact/', Contact.as_view()),
     path('store/newsletter/', Newsletter.as_view()),
     path('store/newsletter/confirm/', NewsletterConfirm.as_view()),
